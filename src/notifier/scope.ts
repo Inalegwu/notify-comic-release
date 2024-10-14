@@ -1,16 +1,24 @@
-import { Duration, Effect, Schedule } from "effect";
+import { Duration, Effect, Schedule, Supervisor } from "effect";
 import { resource } from "../cheerio/resource";
 
-const make = Effect.repeat(
+const repeat = Effect.forever(
 	Effect.gen(function* () {
-		const { page } = yield* resource;
+		const supervisor = yield* Supervisor.track;
+
+		const { page } = yield* resource.pipe(Effect.supervised(supervisor));
 
 		const links = page("div.tdb_module_loop").find("a");
+
+		yield* Effect.logInfo("hmmm...");
 	}),
-	Schedule.duration(Duration.millis(1000)),
+);
+
+const make = Effect.repeat(
+	repeat,
+	Schedule.duration(Duration.seconds(10)),
 ).pipe(
 	Effect.annotateLogs({
-		module: "notifier",
+		scope: "notifier",
 	}),
 );
 
