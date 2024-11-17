@@ -25,10 +25,7 @@ const make = Effect.gen(function* () {
           const href = page(post).attr("href");
           const title = page(post).text();
 
-          yield* Effect.logInfo({ href, title });
-
           if (href === "" || title === "" || href === undefined) {
-            yield* Effect.logInfo("No Post found");
             return;
           }
 
@@ -73,15 +70,7 @@ const make = Effect.gen(function* () {
   });
 
   yield* Effect.forkDaemon(Effect.repeat(effect, policy));
-
-  yield* Effect.acquireRelease(Effect.logInfo("Started Scraper"), () =>
-    Effect.logInfo("Stopped Scraper"),
-  );
-}).pipe(
-  Effect.annotateLogs({
-    service: "scraper",
-  }),
-);
+});
 
 export const Scraper = {
   Live: Layer.scopedDiscard(make).pipe(Layer.provide(CheerioClient.live)),

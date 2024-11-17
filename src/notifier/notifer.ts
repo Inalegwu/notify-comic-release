@@ -1,13 +1,9 @@
-import { Effect, Layer, PubSub, Queue } from "effect";
-import { issuePub } from "../pub-sub";
+import { Effect, Layer } from "effect";
 
 const make = Effect.gen(function* () {
-  const issuePublisher = yield* issuePub;
-  const issueSubscriber = yield* PubSub.subscribe(issuePublisher);
-
-  const issue = yield* Queue.take(issueSubscriber);
-
-  yield* Effect.logInfo("issue:", issue);
+  yield* Effect.acquireRelease(Effect.logInfo("Notifier Active"), () =>
+    Effect.logInfo("Deactivated Notifier"),
+  );
 });
 
 export const Notifier = {
