@@ -1,25 +1,24 @@
 {
-  "name": "absolute-wednesday",
-  "module": "src/main.ts",
-  "type": "module",
-  "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@types/bun": "latest"
-  },
-  "scripts": {
-    "dev": "bun run --watch src/main.ts"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "@effect/platform": "^0.68.2",
-    "@effect/platform-bun": "^0.48.2",
-    "axios": "^1.7.7",
-    "cheerio": "^1.0.0",
-    "effect": "^3.9.1"
-  },
-  "trustedDependencies": [
-    "@biomejs/biome"
-  ]
+	"name": "absolute-wednesday",
+	"module": "src/main.ts",
+	"type": "module",
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/bun": "latest"
+	},
+	"scripts": {
+		"dev": "bun run --watch src/main.ts",
+		"start": "bun run src/main.ts"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"@effect/platform": "^0.68.2",
+		"@effect/platform-bun": "^0.48.2",
+		"axios": "^1.7.7",
+		"cheerio": "^1.0.0",
+		"effect": "^3.9.1"
+	},
+	"trustedDependencies": ["@biomejs/biome"]
 }
