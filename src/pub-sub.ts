@@ -1,3 +1,3 @@
 import { PubSub } from "effect";
 
-export const issuePub = PubSub.sliding<string>(3);
+export const issuePub = PubSub.bounded<string>(3);
