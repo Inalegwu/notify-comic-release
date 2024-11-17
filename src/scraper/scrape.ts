@@ -1,73 +1,88 @@
-import { Effect, Layer } from "effect";
+import { Duration, Effect, Layer, Schedule } from "effect";
 import { CheerioClient } from "../clients/cheerio";
+import { issuePub } from "../pub-sub";
 
 const regexOld = /\w+(?: \w+)* \#\d+/g;
 const regex = /[\w\s&]+ \#\d+/g;
 
 const make = Effect.gen(function* () {
-	const fiber = yield* Effect.fork(
-		Effect.gen(function* () {
-			const cheerio = yield* CheerioClient;
+  const policy = Schedule.addDelay(Schedule.recurs(2), () => Duration.days(2));
 
-			const page = yield* cheerio.load(
-				"https://comixnow.com/category/dc-weekly/",
-			);
+  const effect = Effect.gen(function* () {
+    const cheerio = yield* CheerioClient;
 
-			const posts = page("div.tdb_module_loop").find("a");
+    const page = yield* cheerio.load(
+      "https://comixnow.com/category/dc-weekly/",
+    );
 
-			yield* Effect.forEach(
-				posts,
-				(post) =>
-					Effect.gen(function* () {
-						const href = page(post).attr("href");
-						const title = page(post).text();
+    const posts = page("div.tdb_module_loop").find("a");
+    const publisher = yield* issuePub;
 
-						yield* Effect.logInfo({ href, title });
+    yield* Effect.forEach(
+      posts,
+      (post) =>
+        Effect.gen(function* () {
+          const href = page(post).attr("href");
+          const title = page(post).text();
 
-						if (href === "" || title === "" || href === undefined) {
-							yield* Effect.logInfo("No Post found");
-							return;
-						}
+          yield* Effect.logInfo({ href, title });
 
-						if (title.split(":").length < 2) return;
+          if (href === "" || title === "" || href === undefined) {
+            yield* Effect.logInfo("No Post found");
+            return;
+          }
 
-						const date = title.match(/\b((\w{3,9})\s+\d{1,2},\s+\d{4})\b/)?.[0];
-						const timestamp = Date.parse(date!);
-						const isNew = Date.now() <= timestamp;
+          if (title.split(":").length < 2) return;
 
-						if (!isNew) return;
+          const date = title.match(/\b((\w{3,9})\s+\d{1,2},\s+\d{4})\b/)?.[0];
+          const timestamp = Date.parse(date!);
+          const isNew = Date.now() <= timestamp;
 
-						const newPage = yield* cheerio.load(href);
-						const body = newPage("div.tdb-block-inner").find("p");
+          if (!isNew) return;
 
-						const parsed = body
-							.text()
-							.split("\n")
-							.map((v) => v.trim())
-							.join("\n")
-							.match(regex)
-							?.map((v) => v.trim());
+          const newPage = yield* cheerio.load(href);
+          const body = newPage("div.tdb-block-inner").find("p");
 
-						if (parsed === undefined) return;
+          const parsed = body
+            .text()
+            .split("\n")
+            .map((v) => v.trim())
+            .join("\n")
+            .match(regex)
+            ?.map((v) => v.trim());
 
-						yield* Effect.logInfo(parsed);
-					}),
-				{
-					concurrency: "unbounded",
-				},
-			);
-		}),
-	);
+          if (parsed === undefined) return;
 
-	yield* Effect.acquireRelease(Effect.logInfo("Started Scraper"), () =>
-		Effect.logInfo("Stopped Scraper"),
-	);
+          yield* Effect.logInfo(parsed);
+
+          yield* Effect.forEach(
+            parsed,
+            (issue) =>
+              Effect.gen(function* () {
+                yield* publisher.publish(issue);
+              }),
+            {
+              concurrency: "inherit",
+            },
+          );
+        }),
+      {
+        concurrency: "unbounded",
+      },
+    );
+  });
+
+  yield* Effect.forkDaemon(Effect.repeat(effect, policy));
+
+  yield* Effect.acquireRelease(Effect.logInfo("Started Scraper"), () =>
+    Effect.logInfo("Stopped Scraper"),
+  );
 }).pipe(
-	Effect.annotateLogs({
-		service: "scraper",
-	}),
+  Effect.annotateLogs({
+    service: "scraper",
+  }),
 );
 
 export const Scraper = {
-	Live: Layer.scopedDiscard(make).pipe(Layer.provide(CheerioClient.live)),
+  Live: Layer.scopedDiscard(make).pipe(Layer.provide(CheerioClient.live)),
 };
