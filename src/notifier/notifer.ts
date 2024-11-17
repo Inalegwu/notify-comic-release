@@ -14,7 +14,9 @@ const make = Effect.gen(function* () {
       Effect.gen(function* (_) {
         const message = yield* Queue.take(issueSubscriber);
 
-        yield* Effect.logInfo(message);
+        yield* Effect.logInfo(
+          `Attempting to Notify of ${message.length} Issues`,
+        );
 
         const issues = message.map((issue) => ({ issue: issue }));
 

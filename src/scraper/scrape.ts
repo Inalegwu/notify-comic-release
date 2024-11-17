@@ -38,6 +38,8 @@ const make = Effect.gen(function* () {
 
           if (!isNew) return;
 
+          yield* Effect.logInfo(`Reading Page ${title}`);
+
           const newPage = yield* cheerio.load(href);
           const body = newPage("div.tdb-block-inner").find("p");
 
@@ -51,6 +53,8 @@ const make = Effect.gen(function* () {
 
           if (parsed === undefined) return;
 
+          yield* Effect.logInfo(`Found ${parsed.length} Issues`);
+
           yield* pubSub.publish(parsed);
         }),
       {
@@ -59,7 +63,7 @@ const make = Effect.gen(function* () {
     );
   });
 
-  yield* Effect.forkDaemon(Effect.repeat(effect, policy));
+  yield* Effect.forkDaemon(Effect.retry(effect, policy));
 });
 
 export const Scraper = {
