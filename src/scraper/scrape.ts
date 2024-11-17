@@ -1,6 +1,6 @@
 import { Duration, Effect, Layer, Schedule } from "effect";
 import { CheerioClient } from "../clients/cheerio";
-import { issuePub } from "../pub-sub";
+import { PubSubClient } from "../pub-sub";
 
 const regexOld = /\w+(?: \w+)* \#\d+/g;
 const regex = /[\w\s&]+ \#\d+/g;
@@ -15,8 +15,9 @@ const make = Effect.gen(function* () {
       "https://comixnow.com/category/dc-weekly/",
     );
 
+    const pubSub = yield* PubSubClient;
+
     const posts = page("div.tdb_module_loop").find("a");
-    const publisher = yield* issuePub;
 
     yield* Effect.forEach(
       posts,
@@ -50,18 +51,7 @@ const make = Effect.gen(function* () {
 
           if (parsed === undefined) return;
 
-          yield* Effect.logInfo(parsed);
-
-          yield* Effect.forEach(
-            parsed,
-            (issue) =>
-              Effect.gen(function* () {
-                yield* publisher.publish(issue);
-              }),
-            {
-              concurrency: "inherit",
-            },
-          );
+          yield* pubSub.publish(parsed);
         }),
       {
         concurrency: "unbounded",
@@ -73,5 +63,8 @@ const make = Effect.gen(function* () {
 });
 
 export const Scraper = {
-  Live: Layer.scopedDiscard(make).pipe(Layer.provide(CheerioClient.live)),
+  Live: Layer.scopedDiscard(make).pipe(
+    Layer.provide(CheerioClient.live),
+    Layer.provide(PubSubClient.live),
+  ),
 };
