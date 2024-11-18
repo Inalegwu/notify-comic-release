@@ -24,6 +24,10 @@ const make = Effect.gen(function* () {
           "./issues.json",
           JSON.stringify(issues, null, 2),
         );
+
+        yield* Effect.try(() => {
+          console.log(`Successfully Notified of ${issues.length} Issues`);
+        });
       }),
     ),
   );
