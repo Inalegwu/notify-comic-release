@@ -38,7 +38,7 @@ const make = Effect.gen(function* () {
 
           if (!isNew) return;
 
-          yield* Effect.logInfo(`Reading Page ${title}`);
+          yield* Effect.logInfo(`Reading Page '${title}'`);
 
           const newPage = yield* cheerio.load(href);
           const body = newPage("div.tdb-block-inner").find("p");
