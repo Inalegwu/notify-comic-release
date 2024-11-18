@@ -1,7 +1,7 @@
 import { FileSystem } from "@effect/platform";
 import { BunFileSystem } from "@effect/platform-bun";
 import { Effect, Layer, Queue } from "effect";
-import { PubSubClient } from "../pub-sub";
+import { PubSubClient } from "../pubsub/client";
 
 const make = Effect.gen(function* () {
   const pubSub = yield* PubSubClient;

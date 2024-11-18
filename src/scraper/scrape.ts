@@ -1,6 +1,6 @@
 import { Duration, Effect, Layer, Schedule } from "effect";
 import { CheerioClient } from "../clients/cheerio";
-import { PubSubClient } from "../pub-sub";
+import { PubSubClient } from "../pubsub/client";
 
 const regexOld = /\w+(?: \w+)* \#\d+/g;
 const regex = /[\w\s&]+ \#\d+/g;
