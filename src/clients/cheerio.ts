@@ -14,8 +14,6 @@ type ICheerioClient = Readonly<{
 const make = Effect.gen(function* () {
   const client = yield* HttpClient.HttpClient;
 
-  // loads page and provides cheerio
-  // api for accessing page
   const load = (url: string) =>
     Effect.tryPromise({
       try: async () => {

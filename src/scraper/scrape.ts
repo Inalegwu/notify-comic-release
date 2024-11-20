@@ -7,6 +7,7 @@ const regex = /[\w\s&]+ \#\d+/g;
 
 const make = Effect.gen(function* () {
   const policy = Schedule.addDelay(Schedule.recurs(2), () => Duration.days(2));
+  const pubSub = yield* PubSubClient;
 
   const effect = Effect.gen(function* () {
     const cheerio = yield* CheerioClient;
@@ -14,8 +15,6 @@ const make = Effect.gen(function* () {
     const page = yield* cheerio.load(
       "https://comixnow.com/category/dc-weekly/",
     );
-
-    const pubSub = yield* PubSubClient;
 
     const posts = page("div.tdb_module_loop").find("a");
 
@@ -63,7 +62,7 @@ const make = Effect.gen(function* () {
     );
   });
 
-  yield* Effect.forkDaemon(Effect.retry(effect, policy));
+  yield* Effect.forkDaemon(Effect.repeat(effect, policy));
 });
 
 export const Scraper = {
