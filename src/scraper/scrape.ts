@@ -1,4 +1,4 @@
-import { Duration, Effect, Layer, Schedule } from "effect";
+import { Duration, Effect, Layer, Option, Schedule } from "effect";
 import { CheerioClient } from "../clients/cheerio";
 import { PubSubClient } from "../pubsub/client";
 
@@ -12,27 +12,30 @@ const make = Effect.gen(function* () {
   const effect = Effect.gen(function* () {
     const cheerio = yield* CheerioClient;
 
+    yield* Effect.logInfo("Attempting to load url");
     const page = yield* cheerio.load(
       "https://comixnow.com/category/dc-weekly/",
     );
 
+    yield* Effect.logInfo("Parsing Posts");
     const posts = page("div.tdb_module_loop").find("a");
 
+    yield* Effect.logInfo("Processing Posts");
     yield* Effect.forEach(
       posts,
       (post) =>
         Effect.gen(function* () {
-          const href = page(post).attr("href");
-          const title = page(post).text();
+          const href = yield* Option.fromNullable(page(post).attr("href"));
+          const title = yield* Option.fromNullable(page(post).text());
 
-          if (href === "" || title === "" || href === undefined) {
-            return;
-          }
+          yield* Effect.logInfo(`Found post ${title} at ${href}`);
 
           if (title.split(":").length < 2) return;
 
-          const date = title.match(/\b((\w{3,9})\s+\d{1,2},\s+\d{4})\b/)?.[0];
-          const timestamp = Date.parse(date!);
+          const date = yield* Option.fromNullable(
+            title.match(/\b((\w{3,9})\s+\d{1,2},\s+\d{4})\b/)?.[0],
+          );
+          const timestamp = Date.parse(date);
           const isNew = Date.now() <= timestamp;
 
           if (!isNew) return;
@@ -42,13 +45,15 @@ const make = Effect.gen(function* () {
           const newPage = yield* cheerio.load(href);
           const body = newPage("div.tdb-block-inner").find("p");
 
-          const parsed = body
-            .text()
-            .split("\n")
-            .map((v) => v.trim())
-            .join("\n")
-            .match(regex)
-            ?.map((v) => v.trim());
+          const parsed = yield* Option.fromNullable(
+            body
+              .text()
+              .split("\n")
+              .map((v) => v.trim())
+              .join("\n")
+              .match(regex)
+              ?.map((v) => v.trim()),
+          );
 
           if (parsed === undefined) return;
 
