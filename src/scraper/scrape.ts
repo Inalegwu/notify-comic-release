@@ -1,4 +1,4 @@
-import { Duration, Effect, Layer, Option, Schedule } from "effect";
+import { Effect, Layer, Option, Schedule } from "effect";
 import { CheerioClient } from "../clients/cheerio";
 import { PubSubClient } from "../pubsub/client";
 
@@ -6,29 +6,24 @@ const regexOld = /\w+(?: \w+)* \#\d+/g;
 const regex = /[\w\s&]+ \#\d+/g;
 
 const make = Effect.gen(function* () {
-  const policy = Schedule.addDelay(Schedule.recurs(2), () => Duration.days(2));
+  const policy = Schedule.cron("0 */2 * * 4");
   const pubSub = yield* PubSubClient;
 
   const effect = Effect.gen(function* () {
     const cheerio = yield* CheerioClient;
 
-    yield* Effect.logInfo("Attempting to load url");
     const page = yield* cheerio.load(
       "https://comixnow.com/category/dc-weekly/",
     );
 
-    yield* Effect.logInfo("Parsing Posts");
     const posts = page("div.tdb_module_loop").find("a");
 
-    yield* Effect.logInfo("Processing Posts");
     yield* Effect.forEach(
       posts,
       (post) =>
         Effect.gen(function* () {
           const href = yield* Option.fromNullable(page(post).attr("href"));
           const title = yield* Option.fromNullable(page(post).text());
-
-          yield* Effect.logInfo(`Found post ${title} at ${href}`);
 
           if (title.split(":").length < 2) return;
 
@@ -38,7 +33,10 @@ const make = Effect.gen(function* () {
           const timestamp = Date.parse(date);
           const isNew = Date.now() <= timestamp;
 
-          if (!isNew) return;
+          if (!isNew) {
+            yield* Effect.logInfo("No New Issues... Resetting");
+            return;
+          }
 
           yield* Effect.logInfo(`Reading Page '${title}'`);
 
