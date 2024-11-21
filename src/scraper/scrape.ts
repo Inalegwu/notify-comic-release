@@ -2,7 +2,6 @@ import { Effect, Layer, Option, Schedule } from "effect";
 import { CheerioClient } from "../clients/cheerio";
 import { PubSubClient } from "../pubsub/client";
 
-const regexOld = /\w+(?: \w+)* \#\d+/g;
 const regex = /[\w\s&]+ \#\d+/g;
 
 const make = Effect.gen(function* () {
@@ -21,7 +20,7 @@ const make = Effect.gen(function* () {
     yield* Effect.forEach(
       posts,
       (post) =>
-        Effect.gen(function* () {
+        Effect.gen(function* ($) {
           const href = yield* Option.fromNullable(page(post).attr("href"));
           const title = yield* Option.fromNullable(page(post).text());
 
@@ -34,7 +33,6 @@ const make = Effect.gen(function* () {
           const isNew = Date.now() <= timestamp;
 
           if (!isNew) {
-            yield* Effect.logInfo("No New Issues... Resetting");
             return;
           }
 
@@ -42,6 +40,16 @@ const make = Effect.gen(function* () {
 
           const newPage = yield* cheerio.load(href);
           const body = newPage("div.tdb-block-inner").find("p");
+          const images = newPage("div.tdb-block-inner").find("table");
+          // const table = newPage(images).find("a");
+
+          // yield* Effect.logInfo(table.attr("href"));
+
+          // yield* Effect.forEach(table, (item) =>
+          //   Effect.logInfo(
+          //     item.attribs.href.match(/([^\/]+(?<!^\d+)\.jpg)$/)?.[0],
+          //   ),
+          // );
 
           const parsed = yield* Option.fromNullable(
             body
@@ -53,7 +61,7 @@ const make = Effect.gen(function* () {
               ?.map((v) => v.trim()),
           );
 
-          if (parsed === undefined) return;
+          yield* Effect.logInfo(parsed);
 
           yield* Effect.logInfo(`Found ${parsed.length} Issues`);
 
