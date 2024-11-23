@@ -40,16 +40,6 @@ const make = Effect.gen(function* () {
 
           const newPage = yield* cheerio.load(href);
           const body = newPage("div.tdb-block-inner").find("p");
-          const images = newPage("div.tdb-block-inner").find("table");
-          // const table = newPage(images).find("a");
-
-          // yield* Effect.logInfo(table.attr("href"));
-
-          // yield* Effect.forEach(table, (item) =>
-          //   Effect.logInfo(
-          //     item.attribs.href.match(/([^\/]+(?<!^\d+)\.jpg)$/)?.[0],
-          //   ),
-          // );
 
           const parsed = yield* Option.fromNullable(
             body
