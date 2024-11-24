@@ -2,23 +2,34 @@ import { FileSystem } from "@effect/platform";
 import { BunFileSystem } from "@effect/platform-bun";
 import { Effect, Layer, Queue } from "effect";
 import { PubSubClient } from "../pubsub/client";
+import { Message } from "../pubsub/message";
 
 const make = Effect.gen(function* () {
   const pubSub = yield* PubSubClient;
 
-  const issueSubscriber = yield* pubSub.subscribe();
+  const issueSubscriber = yield* pubSub.subscribeTo("NewIssue");
   const fs = yield* FileSystem.FileSystem;
 
   yield* Effect.forkDaemon(
     Effect.forever(
       Effect.gen(function* (_) {
-        const message = yield* Queue.take(issueSubscriber);
+        const { issues, deliveryDate } = yield* Queue.take(issueSubscriber);
+
+        const today = new Date();
+
+        if (deliveryDate !== today) {
+          yield* pubSub.publish(
+            Message.SaveForDelivery({
+              date: deliveryDate,
+              issues,
+            }),
+          );
+          return;
+        }
 
         yield* Effect.logInfo(
-          `Attempting to Notify of ${message.length} Issues`,
+          `Attempting to Notify of ${issues.length} Issues`,
         );
-
-        const issues = message.map((issue) => ({ issue: issue }));
 
         yield* fs.writeFileString(
           "./issues.json",

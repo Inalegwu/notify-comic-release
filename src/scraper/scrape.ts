@@ -1,6 +1,7 @@
 import { Effect, Layer, Option, Schedule } from "effect";
 import { CheerioClient } from "../clients/cheerio";
 import { PubSubClient } from "../pubsub/client";
+import { Message } from "../pubsub/message";
 
 const regex = /[\w\s&]+ \#\d+/g;
 
@@ -55,7 +56,12 @@ const make = Effect.gen(function* () {
 
           yield* Effect.logInfo(`Found ${parsed.length} Issues`);
 
-          yield* pubSub.publish(parsed);
+          yield* pubSub.publish(
+            Message.NewIssue({
+              issues: parsed,
+              deliveryDate: new Date(timestamp),
+            }),
+          );
         }),
       {
         concurrency: "unbounded",
