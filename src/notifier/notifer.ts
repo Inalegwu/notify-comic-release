@@ -1,45 +1,34 @@
-import { FileSystem } from "@effect/platform";
+import { PubSubClient } from "@/pubsub/client";
+import { db } from "@/storage/database/db";
 import { BunFileSystem } from "@effect/platform-bun";
-import { Effect, Layer, Queue } from "effect";
-import { PubSubClient } from "../pubsub/client";
-import { Message } from "../pubsub/message";
+import { Effect, Layer, Schedule } from "effect";
 
 const make = Effect.gen(function* () {
   const pubSub = yield* PubSubClient;
-
-  const issueSubscriber = yield* pubSub.subscribeTo("NewIssue");
-  const fs = yield* FileSystem.FileSystem;
+  const policy = Schedule.exponential("2000 millis");
 
   yield* Effect.forkDaemon(
-    Effect.forever(
+    Effect.schedule(
       Effect.gen(function* (_) {
-        const { issues, deliveryDate } = yield* Queue.take(issueSubscriber);
-
-        const today = new Date();
-
-        if (deliveryDate !== today) {
-          yield* pubSub.publish(
-            Message.SaveForDelivery({
-              date: deliveryDate,
-              issues,
+        const issues = yield* Effect.tryPromise(
+          async () =>
+            await db.query.issue.findMany({
+              where: (issue, { eq }) => eq(issue.deliveryDate, new Date()),
             }),
-          );
+        );
+
+        if (issues.length === 0) {
+          yield* Effect.logInfo("No Issues To Be Delivered Today");
           return;
         }
 
-        yield* Effect.logInfo(
-          `Attempting to Notify of ${issues.length} Issues`,
-        );
-
-        yield* fs.writeFileString(
-          "./issues.json",
-          JSON.stringify(issues, null, 2),
-        );
-
-        yield* Effect.try(() =>
-          console.log(`Successfully Notified of ${issues.length} Issues`),
+        yield* Effect.forEach(issues, (issue) =>
+          Effect.gen(function* () {
+            yield* Effect.logInfo(`${issue} is to be published today`);
+          }),
         );
       }),
+      policy,
     ),
   );
 });

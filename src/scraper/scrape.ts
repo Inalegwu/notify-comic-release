@@ -7,6 +7,7 @@ const regex = /[\w\s&]+ \#\d+/g;
 
 const make = Effect.gen(function* () {
   const policy = Schedule.cron("0 */2 * * 4");
+  // const policy = Schedule.exponential(10);
   const pubSub = yield* PubSubClient;
 
   const effect = Effect.gen(function* () {
